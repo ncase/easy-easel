@@ -15,34 +15,85 @@ this.createjs = this.createjs||{};
  * Goes through only the path Commands, and returns a compressed base64 data string
  * This way, you don't have to call the same drawing instructions on an EncodePath.
  **/
-createjs.Graphics.prototype.encodePath = function(){
 
-	var instrNames = ["moveTo","lineTo","quadraticCurveTo","bezierCurveTo"];
-	
-	var ep = new EncodePath();
+createjs.Graphics.prototype.encode = function(){
 
+	// Input & Output
 	this._updateInstructions();
-	var instr, instrs = this._instructions;
-	
-	for (var i=0, l=instrs.length; i<l; i++) {
+	var instr, instrs=this._instructions, instructions=[];
 
-		// the first command is always a beginPath command.
+	// For each instruction past the "beginPath" function
+	// Compress them as much as you can
+
+	for (var i=1; i<instrs.length; i++) {
+
 		var instr = instrs[i];
-		if (instr.path || i==0) {
 
-			for(var j=0, length=instrNames.length; j<length; j++){
-				var instrName = instrNames[j];
-				if(instr.f==this._ctx[instrName]){
-					ep[instrName].apply(ep,instr.params);
+		//////////
+		// PATH: Compress with EncodePath
+
+		if(instr.path){
+
+			var ep = new EncodePath();
+
+			while((instr=instrs[i++]).path){
+
+				// Which path function was it?
+				var pathFunctions = ["moveTo","lineTo","quadraticCurveTo","bezierCurveTo"];
+				for(var j=0; j<pathFunctions.length; j++){
+					var instrName = pathFunctions[j];
+					if(instr.f==this._ctx[instrName]){
+						ep[instrName].apply(ep,instr.params);
+					}
 				}
+
 			}
 
+			instructions.push({ fn:"p", params:[ep.code] });
+
+		}
+
+		//////////
+		// SET PROP
+
+		if(instr.f==this._setProp){
+			switch(instr.params[0]){
+
+				// It's Set Stroke Style
+				case "lineWidth":
+					instructions.push({ 
+						fn:"ss", params:[
+							instr.params[1],
+							(instr=instrs[++i]).params[1],
+							(instr=instrs[++i]).params[1],
+							(instr=instrs[++i]).params[1]
+						]
+					});
+					break;
+
+				// It's Begin Stroke
+				case "strokeStyle":
+					instructions.push({
+						fn:"s", params:[ instr.params[1] ]
+					});
+					break;
+
+			}
 		}
 
 	}
 
-	return ep.code;
+	return instructions;
 
+};
+
+createjs.Graphics.prototype.decode = function(instructions){
+	for(var i=0; i<instructions.length; i++) {
+		var instr = instructions[i];
+		var fn = this[instr.fn];
+		var params = instr.params;
+		fn.apply(this,params);
+	}
 };
 
 /**
