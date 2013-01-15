@@ -1,7 +1,7 @@
 Easy Easel - Drawing vector graphics with Easel.js
 ===
 
-###Check out the [Online Demo](http://commondatastorage.googleapis.com/nutcasenightmare/EaselDrawer.html)
+###Check out the [Online Demo](http://commondatastorage.googleapis.com/nutcasenightmare/easyeasel/EaselDrawer.html)
 
 Most Canvas drawing apps export only bitmaps, which don't look good when transformed, and are heavier in file size.
 
